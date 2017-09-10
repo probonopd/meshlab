@@ -45,9 +45,22 @@ script:
   - cd src
   - cd external
   - qmake --version
-  - qmake 
-  - make
+  - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then qmake                                    ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then qmake CONFIG+=release PREFIX=/usr        ;fi
+  - make -j$(nproc)
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make INSTALL_ROOT=../appdir -j$(nproc) install ; find ../appdir/        ;fi
   - cd ..
   - if [[ "$TRAVIS_OS_NAME" == "osx"   ]]; then qmake "QMAKE_LFLAGS+=-L/usr/local/opt/llvm/lib -lomp" meshlab_full.pro         ;fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then qmake meshlab_full.pro         ;fi
-  - make 
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then qmake CONFIG+=release PREFIX=/usr meshlab_full.pro         ;fi
+  - make -j$(nproc)
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then make INSTALL_ROOT=./appdir -j$(nproc) install ; find ./appdir/        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget -c "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then chmod a+x linuxdeployqt*.AppImage        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then unset QTDIR; unset QT_PLUGIN_PATH ; unset LD_LIBRARY_PATH        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./linuxdeployqt*.AppImage ./appdir/usr/share/applications/*.desktop -bundle-non-qt-libs        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./linuxdeployqt*.AppImage ./appdir/usr/share/applications/*.desktop -appimage        ;fi
+
+after_success:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then find ./appdir -executable -type f -exec ldd {} \; | grep " => /usr" | cut -d " " -f 2-3 | sort | uniq        ;fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then curl --upload-file ./Meshlab*.AppImage https://transfer.sh/Meshlab-git.$(git rev-parse --short HEAD)-x86_64.AppImage        ;fi
+
